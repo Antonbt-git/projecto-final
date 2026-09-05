@@ -175,7 +175,7 @@ def registrar_administrador(
         )
     )
 
-    if usuario_existente:
+    if usuario_existente and usuario_existente.activo:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El correo electrónico ya está registrado.",
@@ -204,21 +204,34 @@ def registrar_administrador(
             detail=str(exc),
         ) from exc
 
-    nuevo_usuario = Usuario(
-        nombre=usuario.nombre,
-        email=usuario.email,
-        password_hash=hash_password(usuario.password),
-        rol="ADMIN",
-        # La cuenta queda inactiva hasta confirmar el token de 6
-        # dígitos enviado al correo.
-        activo=False,
-        rostro_registrado=True,
-        rostro_imagen=usuario.rostro_imagen,
-    )
+    if usuario_existente:
+        # Ya existía un intento de registro inactivo (por ejemplo, si
+        # una falla de red interrumpió el paso de verificación).
+        # Se actualiza con los datos nuevos en vez de bloquear al
+        # usuario con "correo ya registrado".
+        usuario_existente.nombre = usuario.nombre
+        usuario_existente.password_hash = hash_password(usuario.password)
+        usuario_existente.rostro_registrado = True
+        usuario_existente.rostro_imagen = usuario.rostro_imagen
+        nuevo_usuario = usuario_existente
+        db.commit()
+        db.refresh(nuevo_usuario)
+    else:
+        nuevo_usuario = Usuario(
+            nombre=usuario.nombre,
+            email=usuario.email,
+            password_hash=hash_password(usuario.password),
+            rol="ADMIN",
+            # La cuenta queda inactiva hasta confirmar el token de 6
+            # dígitos enviado al correo.
+            activo=False,
+            rostro_registrado=True,
+            rostro_imagen=usuario.rostro_imagen,
+        )
 
-    db.add(nuevo_usuario)
-    db.commit()
-    db.refresh(nuevo_usuario)
+        db.add(nuevo_usuario)
+        db.commit()
+        db.refresh(nuevo_usuario)
 
     generar_y_enviar_codigo_registro(nuevo_usuario, db)
 
