@@ -23,6 +23,7 @@ from app.schemas.usuario import (
 from app.core.email import enviar_codigo_registro, enviar_codigo_verificacion
 from app.core.reconocimiento_facial import (
     ImagenInvalidaError,
+    ReconocimientoNoDisponibleError,
     RostroNoDetectadoError,
     comparar_rostros,
     extraer_rostro,
@@ -201,6 +202,11 @@ def registrar_administrador(
     except (RostroNoDetectadoError, ImagenInvalidaError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except ReconocimientoNoDisponibleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
 
@@ -427,6 +433,11 @@ def iniciar_sesion_facial(
     except (RostroNoDetectadoError, ImagenInvalidaError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except ReconocimientoNoDisponibleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
 

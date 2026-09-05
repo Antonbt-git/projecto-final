@@ -18,8 +18,19 @@ incluidos con `opencv-contrib-python`.
 
 import base64
 
-import cv2
 import numpy as np
+
+try:
+    import cv2
+
+    _CV2_DISPONIBLE = True
+except Exception:  # pragma: no cover - depende del entorno de despliegue
+    # Si OpenCV no puede cargarse (por ejemplo, faltan librerías del
+    # sistema en el servidor), no se debe caer toda la API por esto.
+    # Las funciones de este módulo lanzarán un error claro solo cuando
+    # se intenten usar, en vez de impedir que el resto de la app arranque.
+    cv2 = None  # type: ignore
+    _CV2_DISPONIBLE = False
 
 TAMANO_ROSTRO = (200, 200)
 
@@ -28,8 +39,10 @@ TAMANO_ROSTRO = (200, 200)
 # debajo de él se consideran la misma persona.
 UMBRAL_CONFIANZA = 75.0
 
-_RUTA_CASCADA = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-_detector_rostros = cv2.CascadeClassifier(_RUTA_CASCADA)
+_detector_rostros = None
+if _CV2_DISPONIBLE:
+    _RUTA_CASCADA = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    _detector_rostros = cv2.CascadeClassifier(_RUTA_CASCADA)
 
 
 class RostroNoDetectadoError(Exception):
@@ -38,6 +51,18 @@ class RostroNoDetectadoError(Exception):
 
 class ImagenInvalidaError(Exception):
     """La imagen recibida no pudo ser decodificada."""
+
+
+class ReconocimientoNoDisponibleError(Exception):
+    """OpenCV no está disponible en este entorno de despliegue."""
+
+
+def _verificar_disponible() -> None:
+    if not _CV2_DISPONIBLE:
+        raise ReconocimientoNoDisponibleError(
+            "El reconocimiento facial no está disponible en el servidor "
+            "en este momento. Contacta al administrador."
+        )
 
 
 def _decodificar_imagen(imagen_base64: str) -> np.ndarray:
@@ -72,6 +97,8 @@ def _decodificar_imagen(imagen_base64: str) -> np.ndarray:
 def extraer_rostro(imagen_base64: str) -> np.ndarray:
     """Detecta el rostro principal de una imagen y devuelve un recorte
     en escala de grises, normalizado en tamaño, listo para comparar."""
+
+    _verificar_disponible()
 
     imagen = _decodificar_imagen(imagen_base64)
 
@@ -111,6 +138,8 @@ def comparar_rostros(
     Devuelve una tupla (coincide, confianza), donde `confianza` es la
     distancia LBPH (menor = más parecido).
     """
+
+    _verificar_disponible()
 
     rostro_registrado = extraer_rostro(imagen_registrada_b64)
     rostro_login = extraer_rostro(imagen_login_b64)
