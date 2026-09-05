@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
@@ -12,6 +13,7 @@ password_hash = PasswordHash.recommended()
 SECRET_KEY = "WildCountry1967London110304"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+CODIGO_2FA_EXPIRE_MINUTES = 10
 
 
 def hash_password(password: str) -> str:
@@ -42,6 +44,12 @@ def create_access_token(
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
+
+
+def generar_codigo_2fa() -> str:
+    """Genera un código numérico de 6 dígitos usando un generador seguro."""
+
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def decode_access_token(token: str) -> dict:
