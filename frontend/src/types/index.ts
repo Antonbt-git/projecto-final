@@ -23,6 +23,7 @@ export interface User {
   email: string;
   rol: UserRole;
   activo: boolean;
+  rostro_registrado: boolean;
 }
 
 export interface Client {

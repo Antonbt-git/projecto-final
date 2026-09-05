@@ -8,6 +8,7 @@ import {
 import MainLayout from "../layouts/MainLayout";
 
 import Login from "../pages/Login";
+import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import Clientes from "../pages/Clientes";
 import Comentarios from "../pages/Comentarios";
@@ -26,6 +27,11 @@ export default function AppRoutes() {
         <Route
           path="/login"
           element={<Login />}
+        />
+
+        <Route
+          path="/register"
+          element={<Register />}
         />
 
         <Route element={<ProtectedRoute />}>
