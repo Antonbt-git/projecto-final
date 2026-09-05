@@ -1,20 +1,29 @@
 import os
-import json
-import urllib.request
-import urllib.error
+import smtplib
+from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-RESEND_API_URL = "https://api.resend.com/emails"
+# --------------------------------
+# CONFIGURACIÓN DE GMAIL (SMTP)
+# --------------------------------
+# GMAIL_USER: la cuenta de Gmail que envía los correos
+#             (ej. tuapp@gmail.com).
+# GMAIL_APP_PASSWORD: una "contraseña de aplicación" de 16 caracteres
+#             generada en https://myaccount.google.com/apppasswords
+#             (requiere tener la verificación en 2 pasos activada en
+#             esa cuenta de Gmail). NUNCA uses la contraseña normal
+#             de la cuenta, Google la rechaza para SMTP.
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+GMAIL_SMTP_HOST = "smtp.gmail.com"
+GMAIL_SMTP_PORT = 465
 
-RESEND_FROM = os.getenv(
-    "RESEND_FROM",
-    "Empresa Inteligente <onboarding@resend.dev>"
-)
+EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Empresa Inteligente")
 
 
 def _enviar_correo(
@@ -23,64 +32,58 @@ def _enviar_correo(
     cuerpo: str
 ) -> None:
     """
-    Envía un correo utilizando la API HTTPS de Resend.
+    Envía un correo utilizando una cuenta de Gmail vía SMTP (SSL).
 
-    Si RESEND_API_KEY no está configurada, imprime el mensaje
-    en consola para permitir pruebas locales.
+    A diferencia de un servicio como Resend en modo de prueba, esto
+    permite enviar correos a cualquier destinatario, no solo a la
+    cuenta verificada del remitente.
+
+    Si GMAIL_USER o GMAIL_APP_PASSWORD no están configuradas, imprime
+    el mensaje en consola para permitir pruebas locales.
     """
 
-    if not RESEND_API_KEY:
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
         print(
-            f"[EMAIL] Resend no configurado. "
+            f"[EMAIL] Gmail no configurado. "
             f"Correo para {destinatario}: {cuerpo}"
         )
         return
 
-    datos = {
-        "from": RESEND_FROM,
-        "to": [destinatario],
-        "subject": asunto,
-        "text": cuerpo,
-    }
-
-    datos_json = json.dumps(datos).encode("utf-8")
-
-    solicitud = urllib.request.Request(
-        RESEND_API_URL,
-        data=datos_json,
-        headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    mensaje = MIMEText(cuerpo, "plain", "utf-8")
+    mensaje["Subject"] = asunto
+    mensaje["From"] = formataddr((EMAIL_FROM_NAME, GMAIL_USER))
+    mensaje["To"] = destinatario
 
     try:
-        with urllib.request.urlopen(solicitud, timeout=20) as respuesta:
-            respuesta_body = respuesta.read().decode("utf-8")
-
-            if not 200 <= respuesta.status < 300:
-                raise RuntimeError(
-                    f"Resend respondió HTTP {respuesta.status}: "
-                    f"{respuesta_body}"
-                )
-
-            print(
-                f"[EMAIL] Correo enviado correctamente a "
-                f"{destinatario}"
+        with smtplib.SMTP_SSL(
+            GMAIL_SMTP_HOST,
+            GMAIL_SMTP_PORT,
+            timeout=20,
+        ) as servidor:
+            servidor.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            servidor.sendmail(
+                GMAIL_USER,
+                [destinatario],
+                mensaje.as_string(),
             )
 
-    except urllib.error.HTTPError as error:
-        detalle = error.read().decode("utf-8", errors="replace")
+        print(
+            f"[EMAIL] Correo enviado correctamente a "
+            f"{destinatario}"
+        )
 
+    except smtplib.SMTPAuthenticationError as error:
         raise RuntimeError(
-            f"Resend rechazó el correo. "
-            f"HTTP {error.code}: {detalle}"
+            "Gmail rechazó las credenciales. Verifica que "
+            "GMAIL_APP_PASSWORD sea una contraseña de aplicación "
+            "válida (no la contraseña normal de la cuenta) y que "
+            "la verificación en 2 pasos esté activa en esa cuenta "
+            f"de Gmail. Detalle: {error}"
         ) from error
 
-    except urllib.error.URLError as error:
+    except smtplib.SMTPException as error:
         raise RuntimeError(
-            f"No se pudo conectar con Resend: {error.reason}"
+            f"No se pudo enviar el correo con Gmail: {error}"
         ) from error
 
 
