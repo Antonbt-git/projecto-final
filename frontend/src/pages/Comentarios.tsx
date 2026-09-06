@@ -15,6 +15,7 @@ import Input from "../components/ui/Input";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import { analizarSentimiento as analizarSentimientoNLTK } from "../services/nltk";
+import { createComentario } from "../services/comentarios";
 import type { Sentimiento } from "../types";
 
 interface CommentItem {
@@ -119,6 +120,7 @@ export default function Comentarios() {
   // (para mostrar el spinner solo en ese botón)
   const [analizandoId, setAnalizandoId] = useState<number | null>(null);
   const [analizandoTodos, setAnalizandoTodos] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   // Intenta analizar con el backend (NLTK). Si el servidor no
   // responde (por ejemplo, no está corriendo o no hay internet),
@@ -132,24 +134,55 @@ export default function Comentarios() {
     }
   };
 
-  const handleAgregarComentario = () => {
+  const handleAgregarComentario = async () => {
     if (!nuevoContenido.trim()) return;
 
-    const nuevo: CommentItem = {
-      id: Date.now(),
-      cliente: nuevoCliente.trim() || "Cliente anónimo",
-      contenido: nuevoContenido.trim(),
-      canal: nuevoCanal,
-      categoria: "OTROS",
-      estado: "pendiente",
-      fecha: new Date().toLocaleDateString("es-PE"),
-      sentimiento: null,
-    };
+    setEnviando(true);
 
-    setComments((prev) => [nuevo, ...prev]);
-    setNuevoCliente("");
-    setNuevoContenido("");
-    setNuevoCanal("web");
+    // Este es el mismo endpoint público que usaría un formulario de
+    // contacto real. El backend clasifica el mensaje automáticamente
+    // (NLTK) apenas llega, y devuelve ya la categoría y el estado
+    // ("procesado") con los que se enruta a la bandeja del área
+    // correspondiente (ventas, soporte, reclamo, etc.).
+    try {
+      const creado = await createComentario({
+        contenido: nuevoContenido.trim(),
+        canal: nuevoCanal,
+      });
+
+      const nuevo: CommentItem = {
+        id: creado.id,
+        cliente: nuevoCliente.trim() || "Cliente anónimo",
+        contenido: creado.contenido,
+        canal: creado.canal,
+        categoria: creado.categoria ?? "OTROS",
+        estado: creado.estado as CommentItem["estado"],
+        fecha: new Date(creado.fecha).toLocaleDateString("es-PE"),
+        sentimiento: null,
+      };
+
+      setComments((prev) => [nuevo, ...prev]);
+    } catch {
+      // Si el backend no responde, se agrega localmente sin
+      // clasificar, para no bloquear la demo.
+      const nuevo: CommentItem = {
+        id: Date.now(),
+        cliente: nuevoCliente.trim() || "Cliente anónimo",
+        contenido: nuevoContenido.trim(),
+        canal: nuevoCanal,
+        categoria: "OTROS",
+        estado: "pendiente",
+        fecha: new Date().toLocaleDateString("es-PE"),
+        sentimiento: null,
+      };
+
+      setComments((prev) => [nuevo, ...prev]);
+    } finally {
+      setNuevoCliente("");
+      setNuevoContenido("");
+      setNuevoCanal("web");
+      setEnviando(false);
+    }
   };
 
   const handleAnalizarComentario = async (id: number) => {
@@ -311,11 +344,15 @@ export default function Comentarios() {
 
           <Button
             onClick={handleAgregarComentario}
-            disabled={!nuevoContenido.trim()}
+            disabled={!nuevoContenido.trim() || enviando}
           >
             <span className="flex items-center justify-center gap-2">
-              <Send size={16} />
-              Agregar comentario
+              {enviando ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
+              {enviando ? "Clasificando..." : "Agregar comentario"}
             </span>
           </Button>
         </div>

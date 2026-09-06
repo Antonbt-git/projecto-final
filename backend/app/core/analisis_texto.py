@@ -96,6 +96,32 @@ def obtener_palabras_frecuentes(texto: str, top_n: int = 10) -> list[dict]:
     ]
 
 
+def obtener_palabras_frecuentes_multiple(
+    textos: list[str], top_n: int = 10
+) -> list[dict]:
+    """
+    Igual que `obtener_palabras_frecuentes`, pero agregando el conteo
+    sobre varios textos a la vez (por ejemplo, todos los comentarios
+    de un cliente en la base de datos). Se usa en el endpoint
+    GET /api/comentarios/keywords.
+    """
+    palabras_vacias = _obtener_stopwords()
+    conteo: Counter = Counter()
+
+    for texto in textos:
+        tokens = tokenizar(texto)
+        conteo.update(
+            token
+            for token in tokens
+            if token not in palabras_vacias and len(token) > 2
+        )
+
+    return [
+        {"palabra": palabra, "frecuencia": frecuencia}
+        for palabra, frecuencia in conteo.most_common(top_n)
+    ]
+
+
 # ---------------------------------------------------------------
 # Clasificación por categoría
 # ---------------------------------------------------------------

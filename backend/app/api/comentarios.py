@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_db, obtener_usuario_actual
-from app.core.analisis_texto import analizar_texto
+from app.core.analisis_texto import analizar_texto, obtener_palabras_frecuentes_multiple
 from app.core.auditoria import registrar_auditoria
 from app.database.models import AnalisisNLP, Comentario, Usuario
 from app.schemas.analisis_nlp import AnalisisNLPResponse
@@ -11,6 +11,7 @@ from app.schemas.comentario import (
     ComentarioCreate,
     ComentarioResponse,
 )
+from app.schemas.nltk import PalabraFrecuente
 
 router = APIRouter(
     prefix="/api/comentarios",
@@ -26,7 +27,13 @@ def crear_comentario(
     """
     Registra un comentario de un cliente. Es un endpoint público:
     no requiere autenticación, para que un cliente pueda dejar su
-    comentario desde el sitio web, un formulario, etc.
+    comentario desde el sitio web, un formulario de contacto, etc.
+
+    Apenas llega el comentario se ejecuta la clasificación NLP
+    (tokenización + NLTK) de forma automática, de modo que el
+    mensaje quede etiquetado con su categoría ('ventas', 'soporte',
+    'reclamo', etc.) y así pueda enrutarse a la bandeja del área
+    correspondiente sin intervención manual.
     """
     nuevo_comentario = Comentario(**comentario.model_dump())
 
@@ -34,7 +41,58 @@ def crear_comentario(
     db.commit()
     db.refresh(nuevo_comentario)
 
+    # Clasificación automática del mensaje entrante.
+    analisis = analizar_texto(nuevo_comentario.contenido)
+
+    nuevo_analisis = AnalisisNLP(
+        comentario_id=nuevo_comentario.id,
+        idioma=analisis["idioma"],
+        cantidad_palabras=analisis["cantidad_palabras"],
+        palabras_limpias=analisis["tokens"],
+        palabras_frecuentes=analisis["palabras_frecuentes"],
+        categoria_detectada=analisis["categoria"],
+        confianza=analisis["confianza"],
+    )
+    db.add(nuevo_analisis)
+
+    # La categoría detectada define a qué "bandeja" (área) se envía
+    # el mensaje: ventas, soporte, reclamo, consulta, felicitación.
+    nuevo_comentario.categoria = analisis["categoria"]
+    nuevo_comentario.procesado = True
+    nuevo_comentario.estado = "procesado"
+
+    db.commit()
+    db.refresh(nuevo_comentario)
+
     return nuevo_comentario
+
+
+@router.get("/keywords", response_model=list[PalabraFrecuente])
+def obtener_keywords(
+    limite: int = 200,
+    top_n: int = 10,
+    db: Session = Depends(get_db),
+):
+    """
+    Ejercicio 4 — Análisis de comentarios de clientes.
+
+    Junta el contenido de los comentarios más recientes, los
+    tokeniza, quita palabras poco informativas (stopwords en
+    español) y devuelve las `top_n` palabras más frecuentes. Pensado
+    para alimentar la pantalla de "términos frecuentes" del área de
+    atención al cliente (ver FrequentWords en el dashboard).
+
+    NOTA: esta ruta se declara ANTES de "/{comentario_id}" para que
+    FastAPI no interprete "keywords" como un id de comentario.
+    """
+    consulta = (
+        select(Comentario.contenido)
+        .order_by(Comentario.fecha.desc())
+        .limit(limite)
+    )
+    textos = db.execute(consulta).scalars().all()
+
+    return obtener_palabras_frecuentes_multiple(textos, top_n=top_n)
 
 
 @router.get("/", response_model=list[ComentarioResponse])
