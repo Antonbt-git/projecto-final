@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 
 from app.api.clientes import router as clientes_router
+from app.api.nltk import router as nltk_router
 
 
 app = FastAPI(
@@ -41,6 +42,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(clientes_router)
+app.include_router(nltk_router)
 
 
 @app.get("/")

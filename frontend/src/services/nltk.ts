@@ -1,5 +1,5 @@
 import api from "./api";
-import type { NLPAnalysis, FrequentWord } from "../types";
+import type { NLPAnalysis, FrequentWord, SentimentAnalysis } from "../types";
 
 export async function analizarTexto(
   texto: string
@@ -20,6 +20,16 @@ export async function obtenerPalabrasFrecuentes(
       texto,
     }
   );
+
+  return response.data;
+}
+
+export async function analizarSentimiento(
+  texto: string
+): Promise<SentimentAnalysis> {
+  const response = await api.post<SentimentAnalysis>("/nltk/sentimiento", {
+    texto,
+  });
 
   return response.data;
 }

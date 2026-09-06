@@ -61,6 +61,16 @@ export interface FrequentWord {
   frecuencia: number;
 }
 
+export type Sentimiento = "positivo" | "negativo" | "neutral";
+
+export interface SentimentAnalysis {
+  sentimiento: Sentimiento;
+  puntaje: number;
+  confianza: number;
+  palabras_positivas: string[];
+  palabras_negativas: string[];
+}
+
 export interface Statistics {
   cantidad: number;
   media: number;
