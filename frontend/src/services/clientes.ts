@@ -25,3 +25,17 @@ export const crearCliente = async (
   const response = await api.post<Client>("/clientes/", cliente);
   return response.data;
 };
+
+export type ClientUpdate = Partial<ClientCreate>;
+
+export const actualizarCliente = async (
+  id: number,
+  cliente: ClientUpdate,
+): Promise<Client> => {
+  const response = await api.put<Client>(`/clientes/${id}`, cliente);
+  return response.data;
+};
+
+export const eliminarCliente = async (id: number): Promise<void> => {
+  await api.delete(`/clientes/${id}`);
+};
