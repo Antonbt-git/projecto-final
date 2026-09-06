@@ -1,27 +1,32 @@
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.utils import formataddr
+import json
+import urllib.request
+import urllib.error
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # --------------------------------
-# CONFIGURACIÓN DE GMAIL (SMTP)
+# CONFIGURACIÓN DE BREVO (API HTTPS)
 # --------------------------------
-# GMAIL_USER: la cuenta de Gmail que envía los correos
-#             (ej. tuapp@gmail.com).
-# GMAIL_APP_PASSWORD: una "contraseña de aplicación" de 16 caracteres
-#             generada en https://myaccount.google.com/apppasswords
-#             (requiere tener la verificación en 2 pasos activada en
-#             esa cuenta de Gmail). NUNCA uses la contraseña normal
-#             de la cuenta, Google la rechaza para SMTP.
-GMAIL_USER = os.getenv("GMAIL_USER")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+# Se usa la API HTTPS de Brevo (antes Sendinblue) en vez de SMTP porque
+# el plan gratuito de Render bloquea el tráfico saliente por los
+# puertos SMTP (25, 465, 587). La API de Brevo funciona por HTTPS
+# normal, así que no tiene ese problema, y permite enviar a cualquier
+# destinatario (a diferencia del modo sandbox de Resend).
+#
+# BREVO_API_KEY: se obtiene en https://app.brevo.com/settings/keys/api
+# BREVO_FROM_EMAIL: el correo remitente. Debe estar verificado como
+#             "sender" en tu cuenta de Brevo
+#             (https://app.brevo.com/senders/list). Puede ser tu
+#             propio Gmail, solo hay que verificarlo ahí (Brevo manda
+#             un correo de confirmación a esa dirección).
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
-GMAIL_SMTP_HOST = "smtp.gmail.com"
-GMAIL_SMTP_PORT = 465
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+
+BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL")
 
 EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Empresa Inteligente")
 
@@ -32,58 +37,69 @@ def _enviar_correo(
     cuerpo: str
 ) -> None:
     """
-    Envía un correo utilizando una cuenta de Gmail vía SMTP (SSL).
+    Envía un correo utilizando la API HTTPS de Brevo.
 
-    A diferencia de un servicio como Resend en modo de prueba, esto
-    permite enviar correos a cualquier destinatario, no solo a la
-    cuenta verificada del remitente.
-
-    Si GMAIL_USER o GMAIL_APP_PASSWORD no están configuradas, imprime
-    el mensaje en consola para permitir pruebas locales.
+    Si BREVO_API_KEY o BREVO_FROM_EMAIL no están configuradas,
+    imprime el mensaje en consola para permitir pruebas locales.
     """
 
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+    if not BREVO_API_KEY or not BREVO_FROM_EMAIL:
         print(
-            f"[EMAIL] Gmail no configurado. "
+            f"[EMAIL] Brevo no configurado. "
             f"Correo para {destinatario}: {cuerpo}"
         )
         return
 
-    mensaje = MIMEText(cuerpo, "plain", "utf-8")
-    mensaje["Subject"] = asunto
-    mensaje["From"] = formataddr((EMAIL_FROM_NAME, GMAIL_USER))
-    mensaje["To"] = destinatario
+    datos = {
+        "sender": {
+            "name": EMAIL_FROM_NAME,
+            "email": BREVO_FROM_EMAIL,
+        },
+        "to": [{"email": destinatario}],
+        "subject": asunto,
+        "textContent": cuerpo,
+    }
+
+    datos_json = json.dumps(datos).encode("utf-8")
+
+    solicitud = urllib.request.Request(
+        BREVO_API_URL,
+        data=datos_json,
+        headers={
+            "api-key": BREVO_API_KEY,
+            "accept": "application/json",
+            "content-type": "application/json",
+            "User-Agent": "EmpresaInteligente-Backend/1.0",
+        },
+        method="POST",
+    )
 
     try:
-        with smtplib.SMTP_SSL(
-            GMAIL_SMTP_HOST,
-            GMAIL_SMTP_PORT,
-            timeout=20,
-        ) as servidor:
-            servidor.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            servidor.sendmail(
-                GMAIL_USER,
-                [destinatario],
-                mensaje.as_string(),
+        with urllib.request.urlopen(solicitud, timeout=20) as respuesta:
+            respuesta_body = respuesta.read().decode("utf-8")
+
+            if not 200 <= respuesta.status < 300:
+                raise RuntimeError(
+                    f"Brevo respondió HTTP {respuesta.status}: "
+                    f"{respuesta_body}"
+                )
+
+            print(
+                f"[EMAIL] Correo enviado correctamente a "
+                f"{destinatario}"
             )
 
-        print(
-            f"[EMAIL] Correo enviado correctamente a "
-            f"{destinatario}"
-        )
+    except urllib.error.HTTPError as error:
+        detalle = error.read().decode("utf-8", errors="replace")
 
-    except smtplib.SMTPAuthenticationError as error:
         raise RuntimeError(
-            "Gmail rechazó las credenciales. Verifica que "
-            "GMAIL_APP_PASSWORD sea una contraseña de aplicación "
-            "válida (no la contraseña normal de la cuenta) y que "
-            "la verificación en 2 pasos esté activa en esa cuenta "
-            f"de Gmail. Detalle: {error}"
+            f"Brevo rechazó el correo. "
+            f"HTTP {error.code}: {detalle}"
         ) from error
 
-    except smtplib.SMTPException as error:
+    except urllib.error.URLError as error:
         raise RuntimeError(
-            f"No se pudo enviar el correo con Gmail: {error}"
+            f"No se pudo conectar con Brevo: {error.reason}"
         ) from error
 
 
