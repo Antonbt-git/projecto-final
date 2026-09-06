@@ -31,3 +31,4 @@ pwdlib[argon2]==0.2.1
 numpy==2.2.6
 opencv-contrib-python-headless==4.13.0.92
 nltk==3.9.1
+scipy==1.15.2

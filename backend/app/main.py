@@ -6,6 +6,11 @@ from app.api.auth import router as auth_router
 
 from app.api.clientes import router as clientes_router
 from app.api.nltk import router as nltk_router
+from app.api.comentarios import router as comentarios_router
+from app.api.tiempos_atencion import router as tiempos_atencion_router
+from app.api.metricas import router as metricas_router
+from app.api.optimizaciones import router as optimizaciones_router
+from app.api.auditoria import router as auditoria_router
 
 
 app = FastAPI(
@@ -43,6 +48,11 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(clientes_router)
 app.include_router(nltk_router)
+app.include_router(comentarios_router)
+app.include_router(tiempos_atencion_router)
+app.include_router(metricas_router)
+app.include_router(optimizaciones_router)
+app.include_router(auditoria_router)
 
 
 @app.get("/")
