@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MessageSquare,
   Search,
@@ -14,9 +14,28 @@ import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import CategorySummary from "../components/comentarios/CategorySummary";
 import { analizarSentimiento as analizarSentimientoNLTK } from "../services/nltk";
 import { createComentario } from "../services/comentarios";
-import type { Sentimiento } from "../types";
+import { getCategorias } from "../services/categorias";
+import type { Category, Sentimiento } from "../types";
+
+// Respaldo (fallback) mientras el backend no responda, para que el
+// filtro siempre tenga opciones. Coincide con la tabla `categorias`
+// sembrada por la migración de la base de datos.
+const CATEGORIAS_RESPALDO: Category[] = [
+  { id: 1, nombre: "VENTAS", activo: true, created_at: "" },
+  { id: 2, nombre: "SOPORTE", activo: true, created_at: "" },
+  { id: 3, nombre: "RECLAMO", activo: true, created_at: "" },
+  { id: 4, nombre: "CONSULTA", activo: true, created_at: "" },
+  { id: 5, nombre: "FELICITACION", activo: true, created_at: "" },
+  { id: 6, nombre: "OTROS", activo: true, created_at: "" },
+];
+
+function formatearNombreCategoria(nombre: string): string {
+  const normalizado = nombre.toLowerCase();
+  return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
+}
 
 interface CommentItem {
   id: number;
@@ -115,6 +134,28 @@ export default function Comentarios() {
   const [nuevoCliente, setNuevoCliente] = useState("");
   const [nuevoContenido, setNuevoContenido] = useState("");
   const [nuevoCanal, setNuevoCanal] = useState("web");
+
+  // Categorías traídas de la tabla `categorias` de la base de datos
+  // (con respaldo local si el backend aún no responde), para que el
+  // filtro y los apartados de esta pantalla no dependan de una lista
+  // fija en el frontend.
+  const [categorias, setCategorias] = useState<Category[]>(CATEGORIAS_RESPALDO);
+
+  useEffect(() => {
+    let activo = true;
+
+    getCategorias(true)
+      .then((data) => {
+        if (activo && data.length > 0) setCategorias(data);
+      })
+      .catch(() => {
+        // Se mantiene el respaldo si el endpoint no está disponible.
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   // id del comentario que se está analizando en este momento
   // (para mostrar el spinner solo en ese botón)
@@ -332,7 +373,7 @@ export default function Comentarios() {
           />
 
           <select
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
             value={nuevoCanal}
             onChange={(e) => setNuevoCanal(e.target.value)}
           >
@@ -358,7 +399,7 @@ export default function Comentarios() {
         </div>
 
         <textarea
-          className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-blue-500/20"
           rows={3}
           placeholder="Escribe el comentario del cliente..."
           value={nuevoContenido}
@@ -405,6 +446,11 @@ export default function Comentarios() {
         </Card>
       </div>
 
+      {/* Apartado guiado por la tabla `categorias` de la base de datos:
+          muestra, por cada categoría, cuántos comentarios tiene y en
+          qué estado están. */}
+      <CategorySummary />
+
       <Card>
         <div className="mb-6 flex flex-col gap-4 md:flex-row">
           <div className="relative flex-1">
@@ -422,17 +468,16 @@ export default function Comentarios() {
           </div>
 
           <select
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
             value={categoriaFiltro}
             onChange={(e) => setCategoriaFiltro(e.target.value)}
           >
             <option value="">Todas las categorías</option>
-            <option value="VENTAS">Ventas</option>
-            <option value="SOPORTE">Soporte</option>
-            <option value="RECLAMO">Reclamo</option>
-            <option value="CONSULTA">Consulta</option>
-            <option value="FELICITACION">Felicitación</option>
-            <option value="OTROS">Otros</option>
+            {categorias.map((categoria) => (
+              <option key={categoria.id} value={categoria.nombre}>
+                {formatearNombreCategoria(categoria.nombre)}
+              </option>
+            ))}
           </select>
         </div>
 

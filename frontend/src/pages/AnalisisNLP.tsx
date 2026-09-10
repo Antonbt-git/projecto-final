@@ -102,7 +102,7 @@ export default function AnalisisNLP() {
           onChange={(e) => setTexto(e.target.value)}
           placeholder="Ejemplo: El servicio fue excelente y rápido..."
           rows={6}
-          className="w-full resize-none rounded-lg border border-slate-300 p-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full resize-none rounded-lg border border-slate-300 bg-white p-4 text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-blue-500/20"
         />
 
         {error && (

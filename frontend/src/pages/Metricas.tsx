@@ -101,7 +101,7 @@ export default function Metricas() {
           value={values}
           onChange={(e) => setValues(e.target.value)}
           rows={3}
-          className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-blue-500"
+          className="w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white dark:placeholder:text-slate-500"
         />
 
         <div className="mt-4">

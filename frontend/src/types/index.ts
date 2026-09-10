@@ -88,6 +88,33 @@ export interface OptimizationResult {
   costo: number;
 }
 
+export interface InterpolationResult {
+  metodo: "linear" | "cubic";
+  x: number[];
+  valores_interpolados: number[];
+  proyeccion_siguiente: number;
+  fechas?: string[];
+  valores_originales?: number[];
+}
+
+export interface Category {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface CategorySummary {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  activo: boolean;
+  total_comentarios: number;
+  procesados: number;
+  pendientes: number;
+}
+
 export interface DashboardData {
   clientes: number;
   comentarios: number;

@@ -86,7 +86,7 @@ export default function Optimizacion() {
               onChange={(e) =>
                 setRecursoA(e.target.value)
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
             />
           </div>
 
@@ -101,7 +101,7 @@ export default function Optimizacion() {
               onChange={(e) =>
                 setRecursoB(e.target.value)
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
             />
           </div>
 

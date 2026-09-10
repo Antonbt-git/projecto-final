@@ -10,6 +10,8 @@ import KpiCard from "../components/dashboard/KpiCard";
 import AttentionChart from "../components/dashboard/AttentionChart";
 import CategoryChart from "../components/dashboard/CategoryChart";
 import FrequentWords from "../components/dashboard/FrequentWords";
+import StatisticsOverview from "../components/dashboard/StatisticsOverview";
+import InterpolationChart from "../components/dashboard/InterpolationChart";
 
 export default function Dashboard() {
   return (
@@ -82,6 +84,12 @@ export default function Dashboard() {
 
       {/* PALABRAS */}
       <FrequentWords />
+
+      {/* ESTADÍSTICAS */}
+      <StatisticsOverview />
+
+      {/* INTERPOLACIÓN */}
+      <InterpolationChart />
 
       {/* RESUMEN */}
       <div className="grid gap-5 lg:grid-cols-3">
