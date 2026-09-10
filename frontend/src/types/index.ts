@@ -133,6 +133,16 @@ export interface DashboardSummary {
   tiempo_promedio_minutos: number;
 }
 
+export interface AttentionTimeRecord {
+  id: number;
+  cliente_id?: number | null;
+  comentario_id?: number | null;
+  tiempo_minutos: number;
+  fecha: string;
+  operador?: string | null;
+  created_at: string;
+}
+
 export interface DailyAttentionTime {
   fecha: string;
   promedio_minutos: number;
