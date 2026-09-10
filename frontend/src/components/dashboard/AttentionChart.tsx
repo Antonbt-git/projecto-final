@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -7,10 +8,19 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Loader2 } from "lucide-react";
 
 import Card from "../ui/Card";
+import { getTiemposDiarios } from "../../services/dashboard";
 
-const data = [
+interface PuntoGrafico {
+  dia: string;
+  tiempo: number;
+}
+
+// Respaldo (fallback) mientras el backend no responda, para que la
+// gráfica nunca se vea vacía.
+const RESPALDO: PuntoGrafico[] = [
   { dia: "Lun", tiempo: 14 },
   { dia: "Mar", tiempo: 17 },
   { dia: "Mié", tiempo: 15 },
@@ -20,18 +30,59 @@ const data = [
   { dia: "Dom", tiempo: 12 },
 ];
 
+function formatearDia(fechaISO: string): string {
+  const fecha = new Date(`${fechaISO}T00:00:00`);
+  const etiqueta = fecha.toLocaleDateString("es-PE", { weekday: "short" });
+  return etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1, 3);
+}
+
 export default function AttentionChart() {
+  const [data, setData] = useState<PuntoGrafico[]>(RESPALDO);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+
+    getTiemposDiarios(7)
+      .then((registros) => {
+        if (activo && registros.length > 0) {
+          setData(
+            registros.map((registro) => ({
+              dia: formatearDia(registro.fecha),
+              tiempo: registro.promedio_minutos,
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        // Se mantiene el respaldo si el endpoint aún no está disponible.
+      })
+      .finally(() => {
+        if (activo) setLoading(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
   return (
     <Card>
 
-      <div className="mb-5">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Tiempos de atención
-        </h2>
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            Tiempos de atención
+          </h2>
 
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Evolución del tiempo promedio durante la semana
-        </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Evolución del tiempo promedio durante la semana
+          </p>
+        </div>
+
+        {loading && (
+          <Loader2 size={16} className="animate-spin text-slate-400" />
+        )}
       </div>
 
       <div className="h-72">

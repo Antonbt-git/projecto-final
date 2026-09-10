@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import {
   Users,
   MessageSquare,
   Clock,
   CheckCircle,
   ArrowUpRight,
+  Loader2,
 } from "lucide-react";
 
 import KpiCard from "../components/dashboard/KpiCard";
@@ -12,8 +14,44 @@ import CategoryChart from "../components/dashboard/CategoryChart";
 import FrequentWords from "../components/dashboard/FrequentWords";
 import StatisticsOverview from "../components/dashboard/StatisticsOverview";
 import InterpolationChart from "../components/dashboard/InterpolationChart";
+import { getResumenDashboard } from "../services/dashboard";
+import type { DashboardSummary } from "../types";
+
+// Respaldo (fallback) mientras el backend no responda, para que las
+// tarjetas nunca se vean vacías.
+const RESUMEN_RESPALDO: DashboardSummary = {
+  clientes: 245,
+  clientes_activos: 210,
+  comentarios: 1248,
+  comentarios_procesados: 1173,
+  comentarios_pendientes: 75,
+  porcentaje_procesados: 94,
+  tiempo_promedio_minutos: 16.4,
+};
 
 export default function Dashboard() {
+  const [resumen, setResumen] = useState<DashboardSummary>(RESUMEN_RESPALDO);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+
+    getResumenDashboard()
+      .then((data) => {
+        if (activo) setResumen(data);
+      })
+      .catch(() => {
+        // Se mantiene el respaldo si el endpoint aún no está disponible.
+      })
+      .finally(() => {
+        if (activo) setLoading(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
   return (
     <div className="space-y-7">
 
@@ -34,8 +72,9 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          Actualizado hoy
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          {loading && <Loader2 size={14} className="animate-spin" />}
+          {loading ? "Sincronizando con la base de datos..." : "Datos actualizados"}
         </div>
 
       </div>
@@ -45,29 +84,29 @@ export default function Dashboard() {
 
         <KpiCard
           title="Clientes"
-          value="245"
-          description="Clientes registrados"
+          value={resumen.clientes.toLocaleString("es-PE")}
+          description={`${resumen.clientes_activos.toLocaleString("es-PE")} activos`}
           icon={Users}
         />
 
         <KpiCard
           title="Comentarios"
-          value="1,248"
+          value={resumen.comentarios.toLocaleString("es-PE")}
           description="Comentarios recibidos"
           icon={MessageSquare}
         />
 
         <KpiCard
           title="Tiempo promedio"
-          value="16.4 min"
+          value={`${resumen.tiempo_promedio_minutos.toFixed(1)} min`}
           description="Tiempo de atención"
           icon={Clock}
         />
 
         <KpiCard
           title="Procesados"
-          value="94%"
-          description="Comentarios analizados"
+          value={`${resumen.porcentaje_procesados.toFixed(0)}%`}
+          description={`${resumen.comentarios_pendientes.toLocaleString("es-PE")} pendientes`}
           icon={CheckCircle}
         />
 

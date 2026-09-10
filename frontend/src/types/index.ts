@@ -121,3 +121,19 @@ export interface DashboardData {
   promedio: number;
   procesados: number;
 }
+
+export interface DashboardSummary {
+  clientes: number;
+  clientes_activos: number;
+  comentarios: number;
+  comentarios_procesados: number;
+  comentarios_pendientes: number;
+  porcentaje_procesados: number;
+  tiempo_promedio_minutos: number;
+}
+
+export interface DailyAttentionTime {
+  fecha: string;
+  promedio_minutos: number;
+  cantidad_registros: number;
+}

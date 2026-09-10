@@ -13,6 +13,7 @@ from app.api.optimizaciones import router as optimizaciones_router
 from app.api.auditoria import router as auditoria_router
 from app.api.scipy_analisis import router as scipy_analisis_router
 from app.api.categorias import router as categorias_router
+from app.api.dashboard import router as dashboard_router
 
 
 app = FastAPI(
@@ -57,6 +58,7 @@ app.include_router(optimizaciones_router)
 app.include_router(auditoria_router)
 app.include_router(scipy_analisis_router)
 app.include_router(categorias_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/")
