@@ -26,6 +26,10 @@ class ComentarioResponse(ComentarioBase):
     categoria: str | None = None
     fecha: datetime
     procesado: bool
+    # Nombre del cliente (traído con un JOIN a `clientes`), para no
+    # obligar al frontend a resolver cliente_id por su cuenta. Queda
+    # en None si el comentario no tiene cliente asociado.
+    cliente_nombre: str | None = None
 
     class Config:
         from_attributes = True

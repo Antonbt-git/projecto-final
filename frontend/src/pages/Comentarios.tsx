@@ -16,9 +16,9 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import CategorySummary from "../components/comentarios/CategorySummary";
 import { analizarSentimiento as analizarSentimientoNLTK } from "../services/nltk";
-import { createComentario } from "../services/comentarios";
+import { createComentario, getComentarios } from "../services/comentarios";
 import { getCategorias } from "../services/categorias";
-import type { Category, Sentimiento } from "../types";
+import type { Category, Comment, Sentimiento } from "../types";
 
 // Respaldo (fallback) mientras el backend no responda, para que el
 // filtro siempre tenga opciones. Coincide con la tabla `categorias`
@@ -48,7 +48,9 @@ interface CommentItem {
   sentimiento: Sentimiento | null;
 }
 
-const initialComments: CommentItem[] = [
+// Respaldo (fallback) mientras el backend no responda, para que la
+// pantalla nunca se vea vacía en la demo.
+const COMENTARIOS_RESPALDO: CommentItem[] = [
   {
     id: 1,
     cliente: "Juan Pérez",
@@ -80,6 +82,22 @@ const initialComments: CommentItem[] = [
     sentimiento: null,
   },
 ];
+
+// Convierte un comentario tal como lo devuelve el backend (tabla
+// `comentarios`, con el nombre del cliente ya resuelto vía JOIN) al
+// formato que usa esta pantalla.
+function mapComentarioBackend(comentario: Comment): CommentItem {
+  return {
+    id: comentario.id,
+    cliente: comentario.cliente_nombre?.trim() || "Cliente anónimo",
+    contenido: comentario.contenido,
+    canal: comentario.canal,
+    categoria: comentario.categoria ?? "OTROS",
+    estado: comentario.estado === "pendiente" ? "pendiente" : "procesado",
+    fecha: new Date(comentario.fecha).toLocaleDateString("es-PE"),
+    sentimiento: null,
+  };
+}
 
 // Léxico simple en español, usado SOLO como respaldo (fallback) si
 // el backend con NLTK no está disponible en ese momento. El análisis
@@ -126,7 +144,9 @@ function analizarSentimientoLocal(texto: string): Sentimiento {
 type Filtro = "todos" | "positivo" | "negativo" | "sin-analizar";
 
 export default function Comentarios() {
-  const [comments, setComments] = useState<CommentItem[]>(initialComments);
+  const [comments, setComments] = useState<CommentItem[]>(COMENTARIOS_RESPALDO);
+  const [cargandoComentarios, setCargandoComentarios] = useState(true);
+  const [errorComentarios, setErrorComentarios] = useState(false);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
@@ -150,6 +170,34 @@ export default function Comentarios() {
       })
       .catch(() => {
         // Se mantiene el respaldo si el endpoint no está disponible.
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Trae los comentarios reales guardados en la base de datos (tabla
+  // `comentarios`) para que la lista de abajo, la búsqueda y los
+  // filtros trabajen sobre datos reales en vez de datos de ejemplo.
+  useEffect(() => {
+    let activo = true;
+
+    setCargandoComentarios(true);
+    setErrorComentarios(false);
+
+    getComentarios()
+      .then((data) => {
+        if (!activo) return;
+        setComments(data.map(mapComentarioBackend));
+      })
+      .catch(() => {
+        // Se mantiene el respaldo local si el endpoint no responde
+        // (por ejemplo, backend caído o sesión sin token válido).
+        if (activo) setErrorComentarios(true);
+      })
+      .finally(() => {
+        if (activo) setCargandoComentarios(false);
       });
 
     return () => {
@@ -481,6 +529,12 @@ export default function Comentarios() {
           </select>
         </div>
 
+        {errorComentarios && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            No se pudo conectar con la base de datos; mostrando comentarios de ejemplo.
+          </p>
+        )}
+
         {/* Pestañas para separar positivos / negativos */}
         <div className="mb-4 flex flex-wrap gap-2">
           {[
@@ -504,7 +558,14 @@ export default function Comentarios() {
         </div>
 
         <div className="space-y-4">
-          {comentariosFiltrados.length === 0 && (
+          {cargandoComentarios && (
+            <p className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
+              <Loader2 size={16} className="animate-spin" />
+              Cargando comentarios...
+            </p>
+          )}
+
+          {!cargandoComentarios && comentariosFiltrados.length === 0 && (
             <p className="py-8 text-center text-sm text-slate-400">
               No hay comentarios que coincidan con este filtro.
             </p>

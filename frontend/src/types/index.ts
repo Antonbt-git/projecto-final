@@ -39,6 +39,7 @@ export interface Client {
 export interface Comment {
   id: number;
   cliente_id?: number | null;
+  cliente_nombre?: string | null;
   contenido: string;
   canal: string;
   estado: CommentStatus;

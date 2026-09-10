@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_db, obtener_usuario_actual
 from app.core.analisis_texto import analizar_texto, obtener_palabras_frecuentes_multiple
 from app.core.auditoria import registrar_auditoria
-from app.database.models import AnalisisNLP, Comentario, Usuario
+from app.database.models import AnalisisNLP, Cliente, Comentario, Usuario
 from app.schemas.analisis_nlp import AnalisisNLPResponse
 from app.schemas.comentario import (
     ComentarioCreate,
@@ -102,15 +102,32 @@ def listar_comentarios(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual),
 ):
-    consulta = select(Comentario).order_by(Comentario.fecha.desc())
+    """
+    Lista los comentarios guardados en la base de datos (tabla
+    `comentarios`), con el nombre del cliente ya resuelto mediante un
+    LEFT JOIN a `clientes`, para que la pantalla de Comentarios del
+    panel administrativo pueda mostrarlos sin llamadas adicionales.
+    """
+    consulta = (
+        select(Comentario, Cliente.nombre)
+        .outerjoin(Cliente, Comentario.cliente_id == Cliente.id)
+        .order_by(Comentario.fecha.desc())
+    )
 
     if estado is not None:
         consulta = consulta.where(Comentario.estado == estado)
     if procesado is not None:
         consulta = consulta.where(Comentario.procesado == procesado)
 
-    resultado = db.execute(consulta)
-    return resultado.scalars().all()
+    filas = db.execute(consulta).all()
+
+    resultados = []
+    for comentario, cliente_nombre in filas:
+        item = ComentarioResponse.model_validate(comentario)
+        item.cliente_nombre = cliente_nombre
+        resultados.append(item)
+
+    return resultados
 
 
 @router.get("/{comentario_id}", response_model=ComentarioResponse)
