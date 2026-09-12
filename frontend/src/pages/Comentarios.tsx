@@ -6,7 +6,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   MinusCircle,
-  Send,
   Loader2,
 } from "lucide-react";
 
@@ -16,7 +15,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import CategorySummary from "../components/comentarios/CategorySummary";
 import { analizarSentimiento as analizarSentimientoNLTK } from "../services/nltk";
-import { createComentario, getComentarios } from "../services/comentarios";
+import { getComentarios } from "../services/comentarios";
 import { getCategorias } from "../services/categorias";
 import type { Category, Comment, Sentimiento } from "../types";
 
@@ -151,10 +150,6 @@ export default function Comentarios() {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
 
-  const [nuevoCliente, setNuevoCliente] = useState("");
-  const [nuevoContenido, setNuevoContenido] = useState("");
-  const [nuevoCanal, setNuevoCanal] = useState("web");
-
   // Categorías traídas de la tabla `categorias` de la base de datos
   // (con respaldo local si el backend aún no responde), para que el
   // filtro y los apartados de esta pantalla no dependan de una lista
@@ -209,7 +204,6 @@ export default function Comentarios() {
   // (para mostrar el spinner solo en ese botón)
   const [analizandoId, setAnalizandoId] = useState<number | null>(null);
   const [analizandoTodos, setAnalizandoTodos] = useState(false);
-  const [enviando, setEnviando] = useState(false);
 
   // Intenta analizar con el backend (NLTK). Si el servidor no
   // responde (por ejemplo, no está corriendo o no hay internet),
@@ -220,57 +214,6 @@ export default function Comentarios() {
       return resultado.sentimiento;
     } catch {
       return analizarSentimientoLocal(texto);
-    }
-  };
-
-  const handleAgregarComentario = async () => {
-    if (!nuevoContenido.trim()) return;
-
-    setEnviando(true);
-
-    // Este es el mismo endpoint público que usaría un formulario de
-    // contacto real. El backend clasifica el mensaje automáticamente
-    // (NLTK) apenas llega, y devuelve ya la categoría y el estado
-    // ("procesado") con los que se enruta a la bandeja del área
-    // correspondiente (ventas, soporte, reclamo, etc.).
-    try {
-      const creado = await createComentario({
-        contenido: nuevoContenido.trim(),
-        canal: nuevoCanal,
-      });
-
-      const nuevo: CommentItem = {
-        id: creado.id,
-        cliente: nuevoCliente.trim() || "Cliente anónimo",
-        contenido: creado.contenido,
-        canal: creado.canal,
-        categoria: creado.categoria ?? "OTROS",
-        estado: creado.estado as CommentItem["estado"],
-        fecha: new Date(creado.fecha).toLocaleDateString("es-PE"),
-        sentimiento: null,
-      };
-
-      setComments((prev) => [nuevo, ...prev]);
-    } catch {
-      // Si el backend no responde, se agrega localmente sin
-      // clasificar, para no bloquear la demo.
-      const nuevo: CommentItem = {
-        id: Date.now(),
-        cliente: nuevoCliente.trim() || "Cliente anónimo",
-        contenido: nuevoContenido.trim(),
-        canal: nuevoCanal,
-        categoria: "OTROS",
-        estado: "pendiente",
-        fecha: new Date().toLocaleDateString("es-PE"),
-        sentimiento: null,
-      };
-
-      setComments((prev) => [nuevo, ...prev]);
-    } finally {
-      setNuevoCliente("");
-      setNuevoContenido("");
-      setNuevoCanal("web");
-      setEnviando(false);
     }
   };
 
@@ -406,54 +349,6 @@ export default function Comentarios() {
           </span>
         </Button>
       </div>
-
-      {/* Formulario para agregar un comentario */}
-      <Card>
-        <h2 className="mb-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Agregar comentario
-        </h2>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <Input
-            placeholder="Nombre del cliente (opcional)"
-            value={nuevoCliente}
-            onChange={(e) => setNuevoCliente(e.target.value)}
-          />
-
-          <select
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
-            value={nuevoCanal}
-            onChange={(e) => setNuevoCanal(e.target.value)}
-          >
-            <option value="web">Web</option>
-            <option value="email">Email</option>
-            <option value="telefono">Teléfono</option>
-            <option value="redes">Redes sociales</option>
-          </select>
-
-          <Button
-            onClick={handleAgregarComentario}
-            disabled={!nuevoContenido.trim() || enviando}
-          >
-            <span className="flex items-center justify-center gap-2">
-              {enviando ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Send size={16} />
-              )}
-              {enviando ? "Clasificando..." : "Agregar comentario"}
-            </span>
-          </Button>
-        </div>
-
-        <textarea
-          className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-blue-500/20"
-          rows={3}
-          placeholder="Escribe el comentario del cliente..."
-          value={nuevoContenido}
-          onChange={(e) => setNuevoContenido(e.target.value)}
-        />
-      </Card>
 
       {/* Resumen de sentimiento */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

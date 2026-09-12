@@ -32,6 +32,7 @@ function formatearCategoria(categoria?: CommentCategory | null): string {
 export default function App() {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [contenido, setContenido] = useState("");
 
@@ -61,6 +62,7 @@ export default function App() {
           const cliente = await crearCliente({
             nombre: nombre.trim() || "Cliente sin nombre",
             email: email.trim() || undefined,
+            telefono: telefono.trim() || undefined,
             empresa: empresa.trim() || undefined,
           });
           clienteId = cliente.id;
@@ -90,6 +92,7 @@ export default function App() {
   const handleEnviarOtro = () => {
     setNombre("");
     setEmail("");
+    setTelefono("");
     setEmpresa("");
     setContenido("");
     setCategoriaDetectada(null);
@@ -189,13 +192,24 @@ export default function App() {
                     />
                   </div>
 
-                  <Input
-                    label="Correo electrónico"
-                    type="email"
-                    placeholder="tucorreo@ejemplo.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Correo electrónico"
+                      type="email"
+                      placeholder="tucorreo@ejemplo.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+
+                    <Input
+                      label="Teléfono"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+51 999 999 999"
+                      value={telefono}
+                      onChange={(e) => setTelefono(e.target.value)}
+                    />
+                  </div>
 
                   <label className="grid gap-2">
                     <span className="text-[0.86rem] font-bold text-[var(--text)]">
