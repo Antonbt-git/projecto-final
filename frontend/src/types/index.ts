@@ -57,6 +57,21 @@ export interface NLPAnalysis {
   confianza?: number;
 }
 
+// Resultado de analizar un comentario YA GUARDADO en la base de
+// datos (POST /comentarios/{id}/analizar). Tiene nombres de campo
+// distintos a NLPAnalysis porque viene del modelo `AnalisisNLP`.
+export interface AnalisisComentario {
+  id: number;
+  comentario_id: number;
+  idioma: string;
+  cantidad_palabras: number;
+  palabras_limpias?: string[] | null;
+  palabras_frecuentes?: FrequentWord[] | null;
+  categoria_detectada?: CommentCategory | null;
+  confianza?: number | null;
+  fecha_analisis: string;
+}
+
 export interface FrequentWord {
   palabra: string;
   frecuencia: number;

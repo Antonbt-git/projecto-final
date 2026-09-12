@@ -29,38 +29,15 @@ def crear_comentario(
     no requiere autenticación, para que un cliente pueda dejar su
     comentario desde el sitio web, un formulario de contacto, etc.
 
-    Apenas llega el comentario se ejecuta la clasificación NLP
-    (tokenización + NLTK) de forma automática, de modo que el
-    mensaje quede etiquetado con su categoría ('ventas', 'soporte',
-    'reclamo', etc.) y así pueda enrutarse a la bandeja del área
-    correspondiente sin intervención manual.
+    A propósito, el comentario NO se analiza aquí. Queda guardado
+    con estado "pendiente" y procesado=False, y aparece así en la
+    pantalla de Análisis NLP del panel administrativo, para que un
+    analista decida cuándo ejecutar la clasificación (ver el endpoint
+    POST /{comentario_id}/analizar, más abajo en este archivo).
     """
     nuevo_comentario = Comentario(**comentario.model_dump())
 
     db.add(nuevo_comentario)
-    db.commit()
-    db.refresh(nuevo_comentario)
-
-    # Clasificación automática del mensaje entrante.
-    analisis = analizar_texto(nuevo_comentario.contenido)
-
-    nuevo_analisis = AnalisisNLP(
-        comentario_id=nuevo_comentario.id,
-        idioma=analisis["idioma"],
-        cantidad_palabras=analisis["cantidad_palabras"],
-        palabras_limpias=analisis["tokens"],
-        palabras_frecuentes=analisis["palabras_frecuentes"],
-        categoria_detectada=analisis["categoria"],
-        confianza=analisis["confianza"],
-    )
-    db.add(nuevo_analisis)
-
-    # La categoría detectada define a qué "bandeja" (área) se envía
-    # el mensaje: ventas, soporte, reclamo, consulta, felicitación.
-    nuevo_comentario.categoria = analisis["categoria"]
-    nuevo_comentario.procesado = True
-    nuevo_comentario.estado = "procesado"
-
     db.commit()
     db.refresh(nuevo_comentario)
 
