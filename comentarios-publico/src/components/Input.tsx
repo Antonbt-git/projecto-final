@@ -2,32 +2,40 @@ import type { InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  error?: string;
 }
 
 export default function Input({
   label,
+  error,
   className = "",
   ...props
 }: InputProps) {
   return (
-    <div className="space-y-1">
+    <label className="grid gap-2">
       {label && (
-        <label className="block text-sm font-medium text-slate-700">
+        <span className="text-[0.86rem] font-bold text-[var(--text)]">
           {label}
-        </label>
+        </span>
       )}
 
       <input
         className={`
-          w-full rounded-lg border border-slate-300
-          bg-white px-3 py-2 text-sm text-slate-900
+          w-full rounded-xl border px-3.5 py-3 text-sm
           outline-none transition
-          placeholder:text-slate-400
-          focus:border-blue-500 focus:ring-2 focus:ring-blue-100
+          border-[var(--border)] bg-[var(--surface-soft)] text-[var(--text)]
+          placeholder:text-[var(--muted)] placeholder:opacity-80
+          focus:border-[var(--accent)] focus:bg-[var(--surface)]
+          focus:ring-4 focus:ring-[var(--accent-soft)]
+          ${error ? "border-[var(--danger)]" : ""}
           ${className}
         `}
         {...props}
       />
-    </div>
+
+      {error && (
+        <span className="text-xs text-[var(--danger)]">{error}</span>
+      )}
+    </label>
   );
 }

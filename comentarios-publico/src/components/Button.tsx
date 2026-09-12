@@ -11,16 +11,18 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200",
+    primary:
+      "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] hover:-translate-y-px",
+    secondary:
+      "bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--accent)] hover:-translate-y-px",
   };
 
   return (
     <button
       className={`
-        rounded-lg px-4 py-2 text-sm font-medium
-        transition duration-200
-        disabled:cursor-not-allowed disabled:opacity-50
+        min-h-[50px] rounded-xl px-4 py-2 text-sm font-extrabold
+        transition duration-150
+        disabled:cursor-wait disabled:opacity-65 disabled:translate-y-0
         ${variants[variant]}
         ${className}
       `}
